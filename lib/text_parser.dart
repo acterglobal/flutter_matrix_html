@@ -104,6 +104,7 @@ class TextParser extends StatelessWidget {
     this.emoteSize,
     this.setCodeLanguage,
     this.getCodeLanguage,
+    this.inlineSpanEnd,
   });
 
   final double indentSize = 10.0;
@@ -125,6 +126,7 @@ class TextParser extends StatelessWidget {
   final double? emoteSize;
   final SetCodeLanguage? setCodeLanguage;
   final GetCodeLanguage? getCodeLanguage;
+  final InlineSpan? inlineSpanEnd;
 
   TextSpan _parseTextNode(
       BuildContext context, ParseContext parseContext, dom.Text node) {
@@ -166,11 +168,13 @@ class TextParser extends StatelessWidget {
                     textSpan.recognizer))) {
       return _optimizeTextspan(textSpan.children!.first);
     }
+
+    final textSpanChildren = List<InlineSpan>.from(textSpan.children ?? []);
+
     // if our child node is just blank, then append its child nodes one up
     // so, we flatten the tree
     {
-      final textSpanChildren = textSpan.children;
-      if (textSpanChildren != null) {
+      if (textSpanChildren.isNotEmpty) {
         final optimizedChildren = <InlineSpan>[];
         for (var child in textSpanChildren) {
           child = _optimizeTextspan(child);
@@ -185,14 +189,13 @@ class TextParser extends StatelessWidget {
             optimizedChildren.add(child);
           }
         }
-        textSpan.children!.clear();
-        textSpan.children!.addAll(optimizedChildren);
+        textSpanChildren.clear();
+        textSpanChildren.addAll(optimizedChildren);
       }
     }
     // now we try to merge children together
     {
-      final textSpanChildren = textSpan.children;
-      if (textSpanChildren != null) {
+      if (textSpanChildren.isNotEmpty) {
         final optimizedChildren = <InlineSpan>[];
         for (final child in textSpanChildren) {
           final lastChild =
@@ -217,12 +220,23 @@ class TextParser extends StatelessWidget {
             optimizedChildren.add(child);
           }
         }
-        textSpan.children!.clear();
-        textSpan.children!.addAll(optimizedChildren);
+        textSpanChildren.clear();
+        textSpanChildren.addAll(optimizedChildren);
       }
     }
     // we don't care much about additional optimization for now
-    return textSpan;
+    return TextSpan(
+      text: textSpan.text,
+      children: textSpanChildren,
+      style: textSpan.style,
+      recognizer: textSpan.recognizer,
+      mouseCursor: textSpan.mouseCursor,
+      onEnter: textSpan.onEnter,
+      onExit: textSpan.onExit,
+      semanticsLabel: textSpan.semanticsLabel,
+      locale: textSpan.locale,
+      spellOut: textSpan.spellOut,
+    );
   }
 
   InlineSpan _parseInlineChildNodes(
@@ -948,14 +962,103 @@ class TextParser extends StatelessWidget {
       textStyle: defaultTextStyle,
       linkStyle: linkStyle,
     );
-    final widget =
-        _parseNode(context, parseContext, parser.parseFragment(data));
+    final nodeParsed = _parseNode(context, parseContext, parser.parseFragment(data));
+    final widget = inlineSpanEnd != null
+      ? _addInlineSpanToNode(inlineSpan: _optimizeTextspan(inlineSpanEnd!), nodeParsed: nodeParsed)
+      : nodeParsed;
+
     if (shrinkToFit) {
       return widget;
     }
     return Container(
       width: double.infinity,
       child: widget,
+    );
+  }
+
+  Widget _addInlineSpanToNode({required InlineSpan inlineSpan, required Widget nodeParsed}) {
+    if (nodeParsed is CleanRichText) {
+      return _addInlineSpanToCleanRichText(inlineSpan: inlineSpan, richText: nodeParsed);
+    } else if (nodeParsed is Column && nodeParsed.children.isNotEmpty) {
+      return _addInlineSpanToColumn(inlineSpan: inlineSpan, column: nodeParsed);
+    } else {
+      return CleanRichText(
+        TextSpan(
+          children: [
+            WidgetSpan(child: nodeParsed),
+            inlineSpan
+          ]
+        ),
+        maxLines: maxLines
+      );
+    }
+  }
+
+  Widget _addInlineSpanToCleanRichText({required InlineSpan inlineSpan, required CleanRichText richText}) {
+    final childRichText = richText.child;
+    if (childRichText is TextSpan) {
+      return CleanRichText(
+        TextSpan(
+          text: childRichText.text,
+          style: childRichText.style,
+          recognizer: childRichText.recognizer,
+          mouseCursor: childRichText.mouseCursor,
+          onEnter: childRichText.onEnter,
+          onExit: childRichText.onExit,
+          semanticsLabel: childRichText.semanticsLabel,
+          locale: childRichText.locale,
+          spellOut: childRichText.spellOut,
+          children: [
+            if (childRichText.children != null)
+              ...childRichText.children!,
+            inlineSpan
+          ]
+        ),
+        maxLines: richText.maxLines,
+        textAlign: richText.textAlign,
+      );
+    } else {
+      return CleanRichText(
+        TextSpan(
+          children: [
+            childRichText,
+            inlineSpan
+          ]
+        ),
+        maxLines: richText.maxLines,
+        textAlign: richText.textAlign,
+      );
+    }
+  }
+
+  Widget _addInlineSpanToColumn({required InlineSpan inlineSpan, required Column column}) {
+    final columnChildren = column.children;
+    final lastChild = columnChildren.removeLast();
+    Widget newLastChild;
+    if (lastChild is CleanRichText) {
+      newLastChild = _addInlineSpanToCleanRichText(inlineSpan: inlineSpan, richText: lastChild);
+    } else {
+      newLastChild = CleanRichText(
+        TextSpan(
+          children: [
+            WidgetSpan(child: lastChild),
+            inlineSpan
+          ]
+        ),
+        maxLines: maxLines
+      );
+    }
+    return Column(
+      crossAxisAlignment: column.crossAxisAlignment,
+      mainAxisAlignment: column.mainAxisAlignment,
+      mainAxisSize: column.mainAxisSize,
+      textDirection: column.textDirection,
+      textBaseline: column.textBaseline,
+      verticalDirection: column.verticalDirection,
+      children: [
+        ...columnChildren,
+        newLastChild
+      ]
     );
   }
 }
