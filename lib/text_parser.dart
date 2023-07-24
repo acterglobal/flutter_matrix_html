@@ -18,7 +18,7 @@ import 'textspan_extension.dart';
 import 'node_extension.dart';
 
 typedef CustomRender = Widget Function(dom.Node node, List<Widget> children);
-typedef OnLinkTap = void Function(String url);
+typedef OnLinkTap = void Function(Uri uri);
 typedef OnImageTap = void Function(String source);
 typedef OnPillTap = void Function(String identifier);
 typedef GetMxcUrl = String Function(String mxc, double? width, double? height,
@@ -423,6 +423,7 @@ class TextParser extends StatelessWidget {
           break;
         case 'a':
           final url = node.attributes['href'];
+          final uri = Uri.parse(node.attributes['href']!);
           final urlLower = url?.toLowerCase();
           if (url != null &&
               urlLower != null &&
@@ -475,7 +476,7 @@ class TextParser extends StatelessWidget {
               parseContext.textStyle.merge(parseContext.linkStyle);
           return LinkTextSpan(
             style: nextContext.textStyle,
-            url: url ?? '',
+            url: uri,
             onLinkTap: onLinkTap,
             children: <InlineSpan>[
               _parseInlineChildNodes(context, nextContext, node.nodes)
@@ -962,10 +963,13 @@ class TextParser extends StatelessWidget {
       textStyle: defaultTextStyle,
       linkStyle: linkStyle,
     );
-    final nodeParsed = _parseNode(context, parseContext, parser.parseFragment(data));
+    final nodeParsed =
+        _parseNode(context, parseContext, parser.parseFragment(data));
     final widget = inlineSpanEnd != null
-      ? _addInlineSpanToNode(inlineSpan: _optimizeTextspan(inlineSpanEnd!), nodeParsed: nodeParsed)
-      : nodeParsed;
+        ? _addInlineSpanToNode(
+            inlineSpan: _optimizeTextspan(inlineSpanEnd!),
+            nodeParsed: nodeParsed)
+        : nodeParsed;
 
     if (shrinkToFit) {
       return widget;
@@ -976,90 +980,72 @@ class TextParser extends StatelessWidget {
     );
   }
 
-  Widget _addInlineSpanToNode({required InlineSpan inlineSpan, required Widget nodeParsed}) {
+  Widget _addInlineSpanToNode(
+      {required InlineSpan inlineSpan, required Widget nodeParsed}) {
     if (nodeParsed is CleanRichText) {
-      return _addInlineSpanToCleanRichText(inlineSpan: inlineSpan, richText: nodeParsed);
+      return _addInlineSpanToCleanRichText(
+          inlineSpan: inlineSpan, richText: nodeParsed);
     } else if (nodeParsed is Column && nodeParsed.children.isNotEmpty) {
       return _addInlineSpanToColumn(inlineSpan: inlineSpan, column: nodeParsed);
     } else {
       return CleanRichText(
-        TextSpan(
-          children: [
-            WidgetSpan(child: nodeParsed),
-            inlineSpan
-          ]
-        ),
-        maxLines: maxLines
-      );
+          TextSpan(children: [WidgetSpan(child: nodeParsed), inlineSpan]),
+          maxLines: maxLines);
     }
   }
 
-  Widget _addInlineSpanToCleanRichText({required InlineSpan inlineSpan, required CleanRichText richText}) {
+  Widget _addInlineSpanToCleanRichText(
+      {required InlineSpan inlineSpan, required CleanRichText richText}) {
     final childRichText = richText.child;
     if (childRichText is TextSpan) {
       return CleanRichText(
         TextSpan(
-          text: childRichText.text,
-          style: childRichText.style,
-          recognizer: childRichText.recognizer,
-          mouseCursor: childRichText.mouseCursor,
-          onEnter: childRichText.onEnter,
-          onExit: childRichText.onExit,
-          semanticsLabel: childRichText.semanticsLabel,
-          locale: childRichText.locale,
-          spellOut: childRichText.spellOut,
-          children: [
-            if (childRichText.children != null)
-              ...childRichText.children!,
-            inlineSpan
-          ]
-        ),
+            text: childRichText.text,
+            style: childRichText.style,
+            recognizer: childRichText.recognizer,
+            mouseCursor: childRichText.mouseCursor,
+            onEnter: childRichText.onEnter,
+            onExit: childRichText.onExit,
+            semanticsLabel: childRichText.semanticsLabel,
+            locale: childRichText.locale,
+            spellOut: childRichText.spellOut,
+            children: [
+              if (childRichText.children != null) ...childRichText.children!,
+              inlineSpan
+            ]),
         maxLines: richText.maxLines,
         textAlign: richText.textAlign,
       );
     } else {
       return CleanRichText(
-        TextSpan(
-          children: [
-            childRichText,
-            inlineSpan
-          ]
-        ),
+        TextSpan(children: [childRichText, inlineSpan]),
         maxLines: richText.maxLines,
         textAlign: richText.textAlign,
       );
     }
   }
 
-  Widget _addInlineSpanToColumn({required InlineSpan inlineSpan, required Column column}) {
+  Widget _addInlineSpanToColumn(
+      {required InlineSpan inlineSpan, required Column column}) {
     final columnChildren = column.children;
     final lastChild = columnChildren.removeLast();
     Widget newLastChild;
     if (lastChild is CleanRichText) {
-      newLastChild = _addInlineSpanToCleanRichText(inlineSpan: inlineSpan, richText: lastChild);
+      newLastChild = _addInlineSpanToCleanRichText(
+          inlineSpan: inlineSpan, richText: lastChild);
     } else {
       newLastChild = CleanRichText(
-        TextSpan(
-          children: [
-            WidgetSpan(child: lastChild),
-            inlineSpan
-          ]
-        ),
-        maxLines: maxLines
-      );
+          TextSpan(children: [WidgetSpan(child: lastChild), inlineSpan]),
+          maxLines: maxLines);
     }
     return Column(
-      crossAxisAlignment: column.crossAxisAlignment,
-      mainAxisAlignment: column.mainAxisAlignment,
-      mainAxisSize: column.mainAxisSize,
-      textDirection: column.textDirection,
-      textBaseline: column.textBaseline,
-      verticalDirection: column.verticalDirection,
-      children: [
-        ...columnChildren,
-        newLastChild
-      ]
-    );
+        crossAxisAlignment: column.crossAxisAlignment,
+        mainAxisAlignment: column.mainAxisAlignment,
+        mainAxisSize: column.mainAxisSize,
+        textDirection: column.textDirection,
+        textBaseline: column.textBaseline,
+        verticalDirection: column.verticalDirection,
+        children: [...columnChildren, newLastChild]);
   }
 }
 
