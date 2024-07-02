@@ -21,6 +21,11 @@ typedef CustomRender = Widget Function(dom.Node node, List<Widget> children);
 typedef OnLinkTap = void Function(Uri uri);
 typedef OnImageTap = void Function(String source);
 typedef OnPillTap = void Function(String identifier);
+typedef PillBuilder = Widget Function({
+  required String identifier,
+  required String url,
+  OnPillTap? onTap,
+});
 typedef GetMxcUrl = String Function(String mxc, double? width, double? height,
     {bool? animated});
 typedef GetPillInfo = Future<Map<String, dynamic>> Function(String identifier);
@@ -105,6 +110,7 @@ class TextParser extends StatelessWidget {
     this.setCodeLanguage,
     this.getCodeLanguage,
     this.inlineSpanEnd,
+    this.pillBuilder,
   });
 
   final double indentSize = 10.0;
@@ -127,6 +133,7 @@ class TextParser extends StatelessWidget {
   final SetCodeLanguage? setCodeLanguage;
   final GetCodeLanguage? getCodeLanguage;
   final InlineSpan? inlineSpanEnd;
+  final PillBuilder? pillBuilder;
 
   TextSpan _parseTextNode(
       BuildContext context, ParseContext parseContext, dom.Text node) {
@@ -462,13 +469,16 @@ class TextParser extends StatelessWidget {
             if (isPill) {
               return WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
-                child: Pill(
-                  identifier: identifier,
-                  url: url,
-                  future: getPillInfo?.call(url),
-                  onTap: onPillTap,
-                  getMxcUrl: getMxcUrl,
-                ),
+                child: (pillBuilder != null)
+                    ? pillBuilder!(
+                        identifier: identifier, url: url, onTap: onPillTap)
+                    : Pill(
+                        identifier: identifier,
+                        url: url,
+                        future: getPillInfo?.call(url),
+                        onTap: onPillTap,
+                        getMxcUrl: getMxcUrl,
+                      ),
               );
             }
           }

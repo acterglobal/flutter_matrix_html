@@ -32,6 +32,7 @@ class Html extends StatelessWidget {
     this.getCodeLanguage,
     this.setCodeLanguage,
     this.inlineSpanEnd,
+    this.pillBuilder,
   }) : super(key: key);
 
   final String data;
@@ -45,6 +46,9 @@ class Html extends StatelessWidget {
   final bool shrinkToFit;
   final GetMxcUrl? getMxcUrl;
   final int? maxLines;
+
+  /// pill
+  final PillBuilder? pillBuilder;
   final OnPillTap? onPillTap;
   final GetPillInfo? getPillInfo;
   final double? emoteSize;
@@ -78,6 +82,7 @@ class Html extends StatelessWidget {
           onImageError: onImageError,
           linkStyle: linkStyle,
           onPillTap: onPillTap,
+          pillBuilder: pillBuilder,
           getPillInfo: getPillInfo,
           imageProperties: imageProperties,
           onImageTap: onImageTap,
