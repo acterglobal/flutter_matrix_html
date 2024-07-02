@@ -450,8 +450,10 @@ class TextParser extends StatelessWidget {
               isPill = RegExp(r'^[@#!+][^:]+:[^\/]+$').firstMatch(identifier) !=
                   null;
             } else {
-              final match = RegExp(r'^matrix:(r|roomid|u)\/([^\/]+)$')
-                  .firstMatch(urlLower.split('?').first.split('#').first);
+              final match = RegExp(
+                r'^matrix:(r|roomid|u)\/([^\/]+)$',
+                caseSensitive: false,
+              ).firstMatch(url.split('?').first.split('#').first);
               isPill = match != null && match.group(2) != null;
               if (isPill) {
                 final sigil = {
