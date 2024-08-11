@@ -84,6 +84,7 @@ const SUPPORTED_BLOCK_ELEMENTS = <String>{
   'hr',
   'details',
   'summary',
+  'br',
 };
 
 class TextParser extends StatelessWidget {
@@ -948,6 +949,8 @@ class TextParser extends StatelessWidget {
             summary: summaryRes.isEmpty ? null : summaryRes.first,
             color: defaultTextStyle?.color ?? Colors.black,
           );
+        case 'br':
+          return Text('', style: nextContext.textStyle);
       }
       return _parseChildNodes(context, nextContext, node.nodes);
     } else {
@@ -968,7 +971,7 @@ class TextParser extends StatelessWidget {
     String data = html;
 
     if (renderNewlines) {
-      data = data.replaceAll('\n', '<br />');
+      data = data.replaceAll('\n', '<br/>');
     }
 
     final parseContext = ParseContext(
