@@ -971,7 +971,7 @@ class TextParser extends StatelessWidget {
     String data = html;
 
     if (renderNewlines) {
-      data = data.replaceAll('\n', '<br/>');
+      data = data.replaceAll('\n', '<br />');
     }
 
     final parseContext = ParseContext(
